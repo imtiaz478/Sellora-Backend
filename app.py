@@ -36,8 +36,9 @@ class Transaction(db.Model):
     
 
 @app.route("/api/transactions", methods=["POST"])
+@jwt_required()
 def create_transaction():
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     data = request.get_json()
     
     try:
@@ -47,7 +48,8 @@ def create_transaction():
             product=data["product"],    
             total_price = data["total_price"],
             buy_date=datetime.strptime(data["buy_date"], "%Y-%m-%d"),
-            sell_date=datetime.strptime(data["sell_date"], "%Y-%m-%d") if data.get("sell_date") else None
+            sell_date=datetime.strptime(data["sell_date"], "%Y-%m-%d") if data.get("sell_date") else None,
+            user_id=current_user_id
         )
         
         db.session.add(new_transaction)
@@ -86,7 +88,8 @@ def login():
     if not user or not check_password_hash(user.password, data["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
     
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
+
     
     return jsonify({"token": access_token}) 
     
@@ -94,8 +97,9 @@ def login():
 
 
 @app.route("/api/transactions", methods=["GET"])
+@jwt_required()
 def get_transactions():
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
 
     transactions = Transaction.query.filter_by(user_id=current_user_id).all()
     

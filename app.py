@@ -160,6 +160,7 @@ def get_transactions():
 
 
 @app.route("/api/transactions/<int:id>", methods=["DELETE"])
+@jwt_required()
 def delete_transaction(id):
     transaction = Transaction.query.get(id)
     

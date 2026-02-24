@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "super-secret-key"
@@ -34,6 +36,39 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     
+
+@app.route("/api/upload-csv", methods=["POST"]) 
+@jwt_required()
+def upload_csv():
+    user_id = int(get_jwt_identity())
+    
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files["file"]
+    
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+    
+    stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
+    csv_input = csv.DictReader(stream)  
+    
+    for row in csv_input:
+        transaction = Transaction(
+            source=row["source"],
+            user_or_merchant=row["user_or_merchant"],
+            product=row["product"],
+            total_price=float(row["total_price"]),
+            buy_date=datetime.strptime(row["buy_date"], "%Y-%m-%d").date(),
+            sell_date=datetime.strptime(row["sell_date"], "%Y-%m-%d").date() if row.get("sell_date") else None,
+            user_id=user_id
+        )   
+        db.session.add(transaction)
+    
+    db.session.commit()
+    
+    return jsonify({"message": "CSV uploaded and transactions created successfully"})       
+
 
 @app.route("/api/transactions", methods=["POST"])
 @jwt_required()

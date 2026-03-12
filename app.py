@@ -192,6 +192,57 @@ def product_stats():
 
 
 
+@app.route("/api/predict-demand")
+@jwt_required()
+def predict_demand():
+    
+    import pandas as pd
+    from sklearn.linear_model import LinearRegression
+    
+    user_id = int(get_jwt_identity())
+    
+    transactions = Transaction.query.filter_by(user_id=user_id).all()
+    
+    if len(transactions) < 2:
+        return jsonify({"error": "Not enough data to make predictions"}), 400
+    
+    data = []
+    for t in transactions:
+        data.append({
+            "product": t.product,
+            "date": t.buy_date,
+            "price": t.total_price
+        })
+    
+    df = pd.DataFrame(data)
+    
+    df["date"] = pd.to_datetime(df["date"])
+    df["day"] = df["date"].dt.day
+    df["month"] = df["date"].dt.month
+    
+    predictions = []
+    
+    for product in df["product"].unique():  
+        product_df = df[df["product"] == product]   
+        if len(product_df) < 2:
+            continue
+        
+        X = product_df[["day", "month"]]    
+        y = product_df["price"]
+        
+        model = LinearRegression()
+        model.fit(X, y)
+        
+        future = [[15,4]]
+        pred = model.predict(future)[0] 
+        
+        predictions.append({
+            "product": product,
+            "predicted_demand": round(pred, 2)  
+        })    
+    
+    return jsonify(predictions)
+
 
 @app.route("/api/transactions/<int:id>", methods=["DELETE"])
 @jwt_required()

@@ -158,6 +158,40 @@ def get_transactions():
 
     return jsonify(result)
 
+@app.route("/api/product-stats", methods=["GET"])
+@jwt_required()
+def product_stats():
+
+    user_id = int(get_jwt_identity())
+
+    transactions = Transaction.query.filter_by(user_id=user_id).all()
+
+    stats = {}
+
+    for t in transactions:
+
+        if t.product not in stats:
+            stats[t.product] = {
+                "total_value": 0,
+                "count": 0
+            }
+
+        stats[t.product]["total_value"] += t.total_price
+        stats[t.product]["count"] += 1
+
+    result = []
+
+    for product, data in stats.items():
+        result.append({
+            "product": product,
+            "total_value": data["total_value"],
+            "sales_count": data["count"]
+        })
+
+    return jsonify(result)
+
+
+
 
 @app.route("/api/transactions/<int:id>", methods=["DELETE"])
 @jwt_required()

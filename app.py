@@ -13,7 +13,7 @@ app.config["JWT_SECRET_KEY"] = "super-secret-key"
 jwt = JWTManager(app)
 CORS(app)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sellora.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///sellora.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -234,7 +234,8 @@ def predict_demand():
         model = LinearRegression()
         model.fit(X, y)
         
-        future = [[15,4]]
+        today = datetime.today()
+        future = [[today.day, today.month]]
         pred = model.predict(future)[0] 
         
         predictions.append({
